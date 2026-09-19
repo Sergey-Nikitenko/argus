@@ -15,7 +15,7 @@ from .events import ProcessEvent
 from .score import ScoreResult
 
 DEFAULT_URL = "http://localhost:1234/v1/chat/completions"  # LM Studio / llama.cpp server
-DEFAULT_MODEL = "qwen3-8b"
+DEFAULT_MODEL = "google/gemma-4-e4b"
 
 
 def _prompt_for(ev: ProcessEvent, score: ScoreResult) -> str:
@@ -38,7 +38,7 @@ def _prompt_for(ev: ProcessEvent, score: ScoreResult) -> str:
 
 
 def adjudicate(ev: ProcessEvent, score: ScoreResult, *,
-               model: str = DEFAULT_MODEL, url: str = DEFAULT_URL, timeout: int = 300) -> dict:
+               model: str = DEFAULT_MODEL, url: str = DEFAULT_URL, timeout: int = 600) -> dict:
     """Ask the local model: MALICIOUS / BENIGN / UNCERTAIN. Never raises — any failure is UNCERTAIN."""
     prompt = _prompt_for(ev, score)
     payload = json.dumps({
@@ -49,7 +49,7 @@ def adjudicate(ev: ProcessEvent, score: ScoreResult, *,
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.0,
-        "max_tokens": 512,
+        "max_tokens": 2048,
     }).encode("utf-8")
     req = urllib.request.Request(url, data=payload,
                                  headers={"Content-Type": "application/json"}, method="POST")

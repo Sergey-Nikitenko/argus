@@ -57,25 +57,27 @@ def run_once(cfg: Config):
         return quarantine_file(path, qdir, reason, cfg.manifest_path)
 
     verdict_fn = (lambda h: lookup_sha256(h, cfg.vt_api_key)) if cfg.vt_api_key else None
-    adjudicate_fn = adjudicate if cfg.llm_enabled else None
+    adjudicate_fn = (
+        (lambda ev, score: adjudicate(ev, score, model=cfg.llm_model, url=cfg.llm_url))
+        if cfg.llm_enabled else None
+    )
 
-    # Dedup: the watcher re-reads a sliding window of recent events every poll, so the SAME
-    # event would otherwise be re-flagged each cycle. Track already-detected (timestamp, pid,
-    # image) keys and skip re-appends.
+    # Dedup BEFORE scoring/adjudication: the watcher re-reads a sliding window of recent
+    # events every poll, so an already-seen (timestamp, pid, image) key must be skipped
+    # entirely. Otherwise a would-be-kill event is re-adjudicated on every cycle — each call
+    # blocks on the local model for minutes, wedging the whole watch loop.
     seen = {(str(d.get("timestamp")), str(d.get("pid")), str(d.get("image")))
             for d in read_jsonl(cfg.detections_path, 10000)}
 
-    reports = [
-        process_event(ev, cfg, quarantine_fn=do_quarantine, kill_fn=kill_process_tree,
-                      verdict_fn=verdict_fn, adjudicate_fn=adjudicate_fn)
-        for ev in events
-    ]
-
-    for rep in reports:
+    reports = []
+    for ev in events:
+        key = (ev.timestamp, str(ev.pid), ev.image)
+        if key in seen:
+            continue
+        rep = process_event(ev, cfg, quarantine_fn=do_quarantine, kill_fn=kill_process_tree,
+                            verdict_fn=verdict_fn, adjudicate_fn=adjudicate_fn)
+        reports.append(rep)
         if rep.decision != "allow":
-            key = (rep.event.timestamp, str(rep.event.pid), rep.event.image)
-            if key in seen:
-                continue
             seen.add(key)
             print(rep.to_json())
             append_jsonl(cfg.detections_path, rep.to_dict())

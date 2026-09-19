@@ -61,7 +61,7 @@ SUSPICIOUS_CMDLINE_PATTERNS = (
     (re.compile(r"-enc(odedcommand)?\b", re.I), "encoded PowerShell command", 45, ("T1059.001", "PowerShell")),
     (re.compile(r"-nop\b|--noprofile", re.I), "no-profile PowerShell", 10, ("T1059.001", "PowerShell")),
     (re.compile(r"-w(in\dowstyle)?\s+hidden|--windowstyle\s+hidden", re.I), "hidden window", 20, ("T1564.003", "Hidden Window")),
-    (re.compile(r"-ex(ecutionpolicy)?\s+bypass|--executionpolicy\s+bypass", re.I), "execution-policy bypass", 25, ("T1059.001", "PowerShell")),
+    (re.compile(r"-ex(ec(utionpolicy)?)?\s+bypass|--executionpolicy\s+bypass", re.I), "execution-policy bypass", 25, ("T1059.001", "PowerShell")),
     (re.compile(r"iex\s*\(|invoke-expression", re.I), "invoke-expression", 35, ("T1059.001", "PowerShell")),
     (re.compile(r"downloadstring|new-object\s+net\.webclient|webclient", re.I), "download cradle", 35, ("T1105", "Ingress Tool Transfer")),
     (re.compile(r"frombase64string|\[convert\]::frombase64string", re.I), "base64 decode", 30, ("T1027", "Obfuscated Files")),
