@@ -48,6 +48,39 @@ class TestProcessEvent(unittest.TestCase):
         self.assertIn("q", called)
         self.assertIn("k", called)
 
+    def test_hard_evidence_kills_immediately_without_llm(self):
+        # score >= HARD_EVIDENCE must kill now and never block on the local model.
+        cfg = Config(dry_run=False, flag_threshold=40, kill_threshold=70)
+        calls = {"adjudicate": 0, "kill": 0}
+
+        def adjudicate_fn(e, s):
+            calls["adjudicate"] += 1
+            return {"verdict": "BENIGN", "reason": "model says no"}
+
+        ev = ProcessEvent(source="sysmon", event_id=1, timestamp="", pid=42, parent_pid=0,
+                          image=r"C:\Temp\evil.exe",
+                          command_line="evil.exe -enc X -nop -w hidden -exec bypass")
+        rep = process_event(ev, cfg, adjudicate_fn=adjudicate_fn,
+                            kill_fn=lambda pid: calls.__setitem__("kill", calls["kill"] + 1))
+        self.assertEqual(rep.decision, "quarantine")
+        self.assertEqual(calls["adjudicate"], 0)   # LLM never consulted
+        self.assertEqual(calls["kill"], 1)         # killed immediately
+        self.assertTrue(rep.adjudication.get("skipped_llm"))
+
+    def test_borderline_kill_still_asks_llm_and_downgrades(self):
+        # score in [kill_threshold, HARD_EVIDENCE) still consults the model; a BENIGN
+        # verdict downgrades to flag (fail-safe).
+        cfg = Config(dry_run=False, flag_threshold=40, kill_threshold=70)
+        calls = {"adjudicate": 0}
+
+        def adjudicate_fn(e, s):
+            calls["adjudicate"] += 1
+            return {"verdict": "BENIGN", "reason": "model says no"}
+
+        rep = process_event(suspicious_event(), cfg, adjudicate_fn=adjudicate_fn)  # score 80
+        self.assertEqual(rep.decision, "flag")      # downgraded
+        self.assertEqual(calls["adjudicate"], 1)    # model WAS consulted
+
     def test_act_kills_but_never_quarantines_trusted_binary(self):
         # A System32 LOLBin that scores >= kill_threshold must be killed, but its
         # executable must NOT be moved — quarantining python.exe/powershell.exe is a

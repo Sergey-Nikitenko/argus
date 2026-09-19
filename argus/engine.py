@@ -93,18 +93,22 @@ def process_event(
     decision = decide(score, cfg)
     adjudication = {}
 
-    # Sensory guidance: a local model adjudicates every would-be quarantine. Only a
-    # confirmed MALICIOUS verdict keeps the kill; BENIGN/UNCERTAIN (or model down) downgrade
-    # to flag -- fail-safe: when in doubt, do not destroy.
+    # Sensory guidance, two-speed: HARD EVIDENCE (>= 90) kills immediately — several
+    # independent signals are stacked, so we do NOT block on a slow local model. Only a
+    # BORDERLINE kill (kill_threshold .. 90) consults the model, and a non-MALICIOUS verdict
+    # downgrades it to flag (fail-safe: when in doubt, do not destroy).
     if decision == "quarantine" and adjudicate_fn is not None:
-        try:
-            adjudication = adjudicate_fn(ev, score)
-        except Exception as exc:  # noqa: BLE001
-            adjudication = {"verdict": "UNCERTAIN", "reason": f"adjudication failed: {exc}"}
-        # A weak model can downgrade a BORDERLINE kill to flag, but not HARD EVIDENCE: a score
-        # this high is multiple independent signals stacked, which no small model may veto.
-        if adjudication.get("verdict") != "MALICIOUS" and score.points < HARD_EVIDENCE:
-            decision = "flag"
+        if score.points >= HARD_EVIDENCE:
+            adjudication = {"verdict": "MALICIOUS",
+                            "reason": f"hard-evidence override (score {score.points} >= {HARD_EVIDENCE})",
+                            "skipped_llm": True}
+        else:
+            try:
+                adjudication = adjudicate_fn(ev, score)
+            except Exception as exc:  # noqa: BLE001
+                adjudication = {"verdict": "UNCERTAIN", "reason": f"adjudication failed: {exc}"}
+            if adjudication.get("verdict") != "MALICIOUS":
+                decision = "flag"
 
     report = Report(event=ev, score=score, decision=decision, severity=severity(score.points),
                     sha256=ev.sha256(), adjudication=adjudication)

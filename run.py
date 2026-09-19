@@ -110,6 +110,7 @@ def main(argv=None) -> int:
     parser.add_argument("--watch", action="store_true", help="poll continuously")
     parser.add_argument("--serve", action="store_true", help="run the command-center dashboard")
     parser.add_argument("--interval", type=int, default=60, help="poll interval seconds (--watch)")
+    parser.add_argument("--fast", action="store_true", help="near-real-time watch: 2s poll, smaller window")
     parser.add_argument("--port", type=int, default=None, help="dashboard port (--serve)")
     parser.add_argument("--act", action="store_true", help="actually quarantine/kill (default is dry-run)")
     parser.add_argument("--flag-threshold", type=int, default=None)
@@ -138,7 +139,11 @@ def main(argv=None) -> int:
     if args.serve:
         serve(cfg)
     elif args.watch:
-        run_watch(cfg, args.interval)
+        interval = args.interval
+        if args.fast:
+            interval = 2
+            cfg.max_events_per_poll = 100
+        run_watch(cfg, interval)
     else:
         run_once(cfg)
     return 0
