@@ -48,6 +48,25 @@ class TestProcessEvent(unittest.TestCase):
         self.assertIn("q", called)
         self.assertIn("k", called)
 
+    def test_act_kills_but_never_quarantines_trusted_binary(self):
+        # A System32 LOLBin that scores >= kill_threshold must be killed, but its
+        # executable must NOT be moved — quarantining python.exe/powershell.exe is a
+        # self-inflicted wound, not a remediation. Regression guard.
+        cfg = Config(dry_run=False, flag_threshold=40, kill_threshold=70)
+        called = []
+        rep = process_event(
+            ProcessEvent(source="sysmon", event_id=1, timestamp="", pid=42, parent_pid=0,
+                         image=r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe",
+                         command_line="powershell.exe -nop -w hidden -enc X"),
+            cfg,
+            quarantine_fn=lambda p, q, r="": called.append("q") or "dest",
+            kill_fn=lambda pid: called.append("k"),
+        )
+        self.assertEqual(rep.decision, "quarantine")
+        self.assertNotIn("q", called)                # never moved
+        self.assertIn("k", called)                   # still killed
+        self.assertTrue(any("skipped" in a for a in rep.actions))
+
     def test_flag_takes_no_action_even_when_acting(self):
         cfg = Config(dry_run=False, flag_threshold=40, kill_threshold=70)
         called = []
