@@ -10,10 +10,21 @@ from dataclasses import dataclass, field
 
 from .config import Config
 from .events import ProcessEvent
-from .score import ScoreResult, score_event
+from .score import SUSPICIOUS_PATH_FRAGMENTS, ScoreResult, score_event
 
 
 HARD_EVIDENCE = 90  # stacked independent signals — a weak model cannot veto a kill this strong
+
+
+def is_quarantinable(image: str) -> bool:
+    """True only when the flagged binary lives in a dropper-friendly path.
+
+    We move (quarantine) a *dropped payload*, never the trusted interpreter or
+    system tool that was abused to run it — moving python.exe/powershell.exe off
+    the box is a self-inflicted wound, not a remediation.
+    """
+    img = (image or "").lower()
+    return any(frag in img for frag in SUSPICIOUS_PATH_FRAGMENTS)
 
 
 def severity(points: int) -> str:
@@ -99,12 +110,16 @@ def process_event(
                     sha256=ev.sha256(), adjudication=adjudication)
 
     if decision == "quarantine" and not cfg.dry_run:
-        if quarantine_fn is not None and ev.image:
+        # Move only a dropper (temp/downloads/roaming/…); kill the process tree for a
+        # trusted/system binary instead of yanking the tool itself off the system.
+        if quarantine_fn is not None and ev.image and is_quarantinable(ev.image):
             try:
                 dest = quarantine_fn(ev.image, cfg.quarantine_dir, "; ".join(score.reasons))
                 report.actions.append(f"quarantined -> {dest}")
             except Exception as exc:  # noqa: BLE001
                 report.actions.append(f"quarantine failed: {exc}")
+        elif ev.image:
+            report.actions.append(f"quarantine skipped (trusted binary): {ev.image}")
         if kill_fn is not None and ev.pid:
             try:
                 kill_fn(ev.pid)
