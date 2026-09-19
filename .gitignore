@@ -1,0 +1,15 @@
+# runtime data (detections, quarantine, watcher findings — machine-local, never committed)
+data/
+demo-data/
+.smoke-data/
+
+# build artifacts
+dist/
+build/
+*.spec
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+.venv/

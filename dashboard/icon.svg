@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b2a4a"/>
+      <stop offset="1" stop-color="#0a1224"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3ce6d0"/>
+      <stop offset="1" stop-color="#0e9aa6"/>
+    </linearGradient>
+    <radialGradient id="iris" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#0e7490"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="256" height="256" rx="54" fill="url(#bg)"/>
+
+  <!-- shield -->
+  <path d="M128 22 L212 48 V126 C212 180 174 210 128 234 C82 210 44 180 44 126 V48 Z"
+        fill="#0e1a33" stroke="url(#rim)" stroke-width="7"/>
+
+  <!-- all-seeing eye -->
+  <ellipse cx="128" cy="118" rx="52" ry="30" fill="#081020" stroke="#22d3ee" stroke-width="5"/>
+  <ellipse cx="128" cy="118" rx="30" ry="17" fill="url(#iris)"/>
+  <circle cx="128" cy="118" r="8" fill="#eafffb"/>
+  <circle cx="133" cy="113" r="2.6" fill="#ffffff"/>
+
+  <!-- brow line -->
+  <path d="M76 118 C 90 96, 166 96, 180 118" fill="none" stroke="#3ce6d0" stroke-width="5" stroke-linecap="round"/>
+</svg>

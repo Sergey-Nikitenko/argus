@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARGUS — The Watch</title>
+<style>
+  :root {
+    --bg: #08111a;            /* Aegean night — sea-black */
+    --panel: #0d1a26;
+    --card: #112130;
+    --elev: #182b3c;
+    --border: rgba(224,176,80,0.09);
+    --text: #e6f1f4;
+    --dim: #7fa3b3;
+    --muted: #5a7480;
+    --gold: #e0b050;          /* Iris Gold — dawn-watch bronze */
+    --teal: #35e0c8;          /* Iris Teal — the living iris */
+    --critical: #ff3355;
+    --high: #ff7a3c;
+    --medium: #ffc53d;
+    --low: #3fa9f5;
+    --info: #7fa3b3;
+    --safe: #35e0c8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background:
+      radial-gradient(1000px 520px at 82% -12%, rgba(224,176,80,0.10) 0%, transparent 55%),
+      radial-gradient(760px 420px at 0% 0%, rgba(53,224,200,0.07) 0%, transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+  }
+  .mono { font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace; }
+
+  header {
+    display: flex; align-items: center; gap: 14px;
+    height: 60px; padding: 0 26px;
+    background: rgba(13,26,38,0.82);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 5;
+  }
+  header .logo { width: 34px; height: 34px; filter: drop-shadow(0 0 9px rgba(224,176,80,.5)); }
+  header h1 { font-size: 18px; font-weight: 700; letter-spacing: 2px; }
+  header h1 span { color: var(--gold); }
+  header .sub { color: var(--muted); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; }
+  .spacer { flex: 1; }
+  .watch-word { color: var(--gold); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; opacity: .85; }
+  .status-pill { padding: 6px 13px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border: 1px solid; }
+  .pill-live { color: var(--safe); border-color: rgba(53,224,200,.45); background: rgba(53,224,200,.08); }
+  .pill-dry { color: var(--medium); border-color: rgba(255,197,61,.45); background: rgba(255,197,61,.08); }
+
+  .wrap { padding: 26px; max-width: 1240px; margin: 0 auto; }
+
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin-bottom: 22px; }
+  .stat {
+    background: rgba(17,33,48,0.7); backdrop-filter: blur(6px);
+    border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px;
+    position: relative; overflow: hidden; box-shadow: 0 4px 22px -8px rgba(0,0,0,.6);
+  }
+  .stat::after { content:''; position:absolute; right:-16px; bottom:-16px; width:72px; height:72px; border-radius:50%;
+    border:1px solid var(--accent, var(--gold)); opacity:.12; }
+  .stat .label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 1.6px; font-weight: 600; }
+  .stat .value { font-size: 30px; font-weight: 700; margin-top: 6px; }
+
+  .columns { display: grid; grid-template-columns: 1.9fr 1fr; gap: 16px; }
+  @media (max-width: 940px) { .columns { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: rgba(17,33,48,0.7); backdrop-filter: blur(6px);
+    border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px;
+    box-shadow: 0 4px 22px -8px rgba(0,0,0,.6);
+  }
+  .panel h2 { font-size: 12px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--dim); margin-bottom: 14px; display: flex; align-items: center; gap: 9px; }
+  .panel h2 .eye { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 9px var(--gold); }
+  .empty { color: var(--muted); font-size: 13px; padding: 14px 0; text-align: center; }
+
+  /* detection card — the opening eye */
+  .det {
+    position: relative; border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 12px; background: var(--card);
+    box-shadow: 0 3px 16px -7px rgba(0,0,0,.55);
+  }
+  .det .row1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .iris {
+    width: 16px; height: 16px; border-radius: 50%; flex: 0 0 auto;
+    border: 2px solid var(--sev, var(--info)); box-shadow: 0 0 9px var(--sev, var(--info));
+    position: relative;
+  }
+  .iris::after { content:''; position:absolute; inset:4px; border-radius:50%; background: var(--sev, var(--info)); opacity:.55; }
+  .det.critical .iris, .det.high .iris { animation: watch 2.2s ease-in-out infinite; }
+  @keyframes watch { 0%,100% { box-shadow: 0 0 5px var(--sev); } 50% { box-shadow: 0 0 14px var(--sev), 0 0 26px var(--sev); } }
+  .sevbadge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 3px 8px; border-radius: 5px; color: var(--sev, var(--info)); background: color-mix(in srgb, var(--sev, var(--info)) 12%, transparent); border: 1px solid color-mix(in srgb, var(--sev, var(--info)) 38%, transparent); }
+  .decbadge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 3px 8px; border-radius: 5px; }
+  .decbadge.flag { color: var(--medium); background: rgba(255,197,61,.1); border: 1px solid rgba(255,197,61,.3); }
+  .decbadge.quarantine { color: var(--critical); background: rgba(255,51,85,.1); border: 1px solid rgba(255,51,85,.3); }
+  .score { margin-left: auto; font-family: monospace; font-weight: 700; font-size: 20px; color: var(--sev, var(--text)); }
+  .det .img { font-family: monospace; font-size: 12px; color: var(--dim); word-break: break-all; margin: 8px 0 5px; }
+  .det .cmd { font-family: monospace; font-size: 12px; color: var(--text); word-break: break-all; background: #08111a; border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; }
+  .det .chain { font-family: monospace; font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .det .chain b { color: var(--teal); font-weight: 600; }
+  .chips { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip { font-family: monospace; font-size: 10px; color: var(--gold); background: rgba(224,176,80,.1); border: 1px solid rgba(224,176,80,.32); border-radius: 4px; padding: 2px 7px; }
+  .det .reasons { font-size: 11px; color: var(--dim); margin-top: 7px; line-height: 1.5; }
+  .det .meta { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+  .qrow { display: flex; gap: 10px; align-items: center; font-family: monospace; font-size: 12px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .qrow:last-child { border-bottom: none; }
+  .qrow .orig { color: var(--dim); word-break: break-all; flex: 1; }
+  .restore { background: transparent; border: 1px solid var(--teal); color: var(--teal); border-radius: 6px; padding: 4px 10px; font-size: 11px; cursor: pointer; box-shadow: inset 0 0 8px rgba(53,224,200,.12); }
+  .restore:hover { box-shadow: 0 0 12px rgba(53,224,200,.4); background: rgba(53,224,200,.08); }
+
+  footer { text-align: center; color: var(--muted); font-size: 11px; margin-top: 22px; letter-spacing: 1px; }
+  footer .eye-mark { color: var(--gold); }
+  .pulse { animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+</style>
+</head>
+<body>
+  <header>
+    <img class="logo" src="/icon.jpg" alt="Argus" onerror="this.onerror=null;this.src='/icon.svg'">
+    <div>
+      <h1>ARGUS<span>·</span></h1>
+      <div class="sub">the watch</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="watch-word">👁 the hundred-eyed guardian</div>
+    <div class="spacer"></div>
+    <div id="status" class="status-pill pill-dry">● connecting</div>
+  </header>
+
+  <div class="wrap">
+    <div class="grid">
+      <div class="stat" style="--accent:var(--gold)"><div class="label">Detections</div><div class="value" id="s-det">—</div></div>
+      <div class="stat" style="--accent:var(--medium)"><div class="label">Flagged</div><div class="value" id="s-flag" style="color:var(--medium)">—</div></div>
+      <div class="stat" style="--accent:var(--critical)"><div class="label">Quarantined</div><div class="value" id="s-quar" style="color:var(--critical)">—</div></div>
+      <div class="stat" style="--accent:var(--teal)"><div class="label">Watcher Pairs</div><div class="value" id="s-watch" style="color:var(--teal)">—</div></div>
+      <div class="stat" style="--accent:var(--gold)"><div class="label">Flag / Kill</div><div class="value" id="s-thresh" style="font-size:22px">—</div></div>
+    </div>
+
+    <div class="columns">
+      <div>
+        <div class="panel">
+          <h2><span class="eye pulse"></span> What the watch sees</h2>
+          <div id="feed"><div class="empty">All quiet. The eyes are open.</div></div>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <h2><span class="eye"></span> Quarantine Vault</h2>
+          <div id="quar"><div class="empty">Nothing quarantined.</div></div>
+        </div>
+        <div class="panel">
+          <h2><span class="eye"></span> Watcher-Pair Alerts</h2>
+          <div id="watch"><div class="empty">No watcher pairs.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <footer><span class="eye-mark">👁</span> ARGUS v<span id="ver">—</span> · watch · judge · act · the hundred-eyed guardian</footer>
+  </div>
+
+<script>
+const SEV = { critical:'#ff3355', high:'#ff7a3c', medium:'#ffc53d', low:'#3fa9f5', info:'#7fa3b3' };
+function severityOf(score) {
+  if (score >= 80) return 'critical';
+  if (score >= 60) return 'high';
+  if (score >= 40) return 'medium';
+  if (score >= 20) return 'low';
+  return 'info';
+}
+async function get(url) { const r = await fetch(url); if (!r.ok) throw new Error(r.status); return r.json(); }
+function esc(s) { return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function chips(techs) {
+  if (!techs || !techs.length) return '';
+  return '<div class="chips">' + techs.map(t => `<span class="chip">${esc(t.id)} · ${esc(t.name)}</span>`).join('') + '</div>';
+}
+function renderFeed(dets) {
+  const el = document.getElementById('feed');
+  if (!dets.length) { el.innerHTML = '<div class="empty">All quiet. The eyes are open.</div>'; return; }
+  el.innerHTML = dets.slice().reverse().map(d => {
+    const sev = d.severity || severityOf(d.score);
+    const col = SEV[sev] || SEV.info;
+    const chain = d.parent_pid ? `<div class="chain">parent <b>${d.parent_pid}</b>${d.parent_image ? ' · ' + esc(d.parent_image) : ''} → <b>${d.pid}</b></div>` : '';
+    return `
+    <div class="det ${sev}" style="--sev:${col}">
+      <div class="row1">
+        <span class="iris"></span>
+        <span class="sevbadge">${sev}</span>
+        ${d.decision ? `<span class="decbadge ${d.decision}">${esc(d.decision)}</span>` : ''}
+        <span class="score">${d.score}</span>
+      </div>
+      <div class="img">${esc(d.image || '(unknown image)')}</div>
+      ${d.command_line ? `<div class="cmd">${esc(d.command_line)}</div>` : ''}
+      ${chain}
+      ${chips(d.techniques)}
+      ${d.reasons && d.reasons.length ? `<div class="reasons">${d.reasons.map(r => '• ' + esc(r)).join('<br>')}</div>` : ''}
+      <div class="meta">PID ${d.pid} · ${esc(d.user || '?')} · ${esc(d.timestamp || '')}${d.virus_total ? ' · VT: ' + esc(d.virus_total) : ''}</div>
+    </div>`;
+  }).join('');
+}
+function renderQuar(rows) {
+  const el = document.getElementById('quar');
+  if (!rows.length) { el.innerHTML = '<div class="empty">Nothing quarantined.</div>'; return; }
+  el.innerHTML = rows.slice().reverse().map(r => `
+    <div class="qrow"><span>🛡️</span><span class="orig">${esc(r.original)}</span>
+      <button class="restore" data-q="${esc(r.quarantined)}" data-o="${esc(r.original)}">Restore</button></div>`).join('');
+  el.querySelectorAll('.restore').forEach(btn => btn.onclick = async () => {
+    try {
+      const r = await fetch('/api/restore', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ quarantined: btn.dataset.q, original: btn.dataset.o }) });
+      const j = await r.json();
+      alert(j.ok ? 'Restored: ' + j.restored : 'Restore failed: ' + j.error);
+      refresh();
+    } catch (e) { alert('Restore error: ' + e); }
+  });
+}
+function renderWatch(rows) {
+  const el = document.getElementById('watch');
+  if (!rows.length) { el.innerHTML = '<div class="empty">No watcher pairs.</div>'; return; }
+  el.innerHTML = rows.slice().reverse().map(w => `
+    <div class="qrow"><span>👁</span><span class="orig">${esc(w.image)} <span style="color:var(--critical)">(${esc(w.reason)}${w.count ? ', ×'+w.count : ''})</span></span></div>`).join('');
+}
+async function refresh() {
+  try {
+    const [status, dets, quar, watch] = await Promise.all([
+      get('/api/status'), get('/api/detections'), get('/api/quarantine'), get('/api/watcher')
+    ]);
+    document.getElementById('ver').textContent = status.version;
+    document.getElementById('s-det').textContent = status.detections;
+    document.getElementById('s-flag').textContent = status.flagged;
+    document.getElementById('s-quar').textContent = status.quarantined;
+    document.getElementById('s-watch').textContent = status.watcher_findings;
+    document.getElementById('s-thresh').textContent = `${status.flag_threshold}/${status.kill_threshold}`;
+    const pill = document.getElementById('status');
+    pill.textContent = status.dry_run ? '● DRY-RUN' : '● LIVE';
+    pill.className = 'status-pill ' + (status.dry_run ? 'pill-dry' : 'pill-live');
+    renderFeed(dets); renderQuar(quar); renderWatch(watch);
+  } catch (e) {
+    document.getElementById('status').textContent = '● disconnected';
+  }
+}
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>
