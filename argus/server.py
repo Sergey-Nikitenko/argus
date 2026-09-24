@@ -35,6 +35,28 @@ def _resource_path(rel: str) -> Path:
 DASHBOARD = _resource_path("dashboard")
 
 
+def _source_dashboard() -> Path:
+    """The source-tree dashboard dir (persists across runs — used by the save button)."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent.parent / "dashboard"
+    return Path(__file__).resolve().parent.parent / "dashboard"
+
+
+def _write_ui_overrides(css: str) -> list[str]:
+    """Write builder overrides to both the served dashboard dir and the source tree."""
+    paths = []
+    served = _resource_path("dashboard") / "assets" / "ui-overrides.css"
+    served.parent.mkdir(parents=True, exist_ok=True)
+    served.write_text(css, encoding="utf-8")
+    paths.append(str(served))
+    src = _source_dashboard() / "assets" / "ui-overrides.css"
+    if src.resolve() != served.resolve():
+        src.parent.mkdir(parents=True, exist_ok=True)
+        src.write_text(css, encoding="utf-8")
+        paths.append(str(src))
+    return paths
+
+
 _llm_cache = {"t": 0.0, "reachable": False}
 
 
@@ -115,7 +137,7 @@ def make_handler(cfg: Config, memory=None, graph=None):
                     ext = rel.rsplit(".", 1)[-1].lower() if "." in rel else ""
                     ctype = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png",
                              "svg": "image/svg+xml", "webp": "image/webp", "ico": "image/x-icon",
-                             "css": "text/css"}.get(ext, "application/octet-stream")
+                             "css": "text/css", "js": "application/javascript"}.get(ext, "application/octet-stream")
                     return _static(self, DASHBOARD / "assets" / rel, ctype)
                 return self.send_error(404)
 
@@ -255,6 +277,17 @@ def make_handler(cfg: Config, memory=None, graph=None):
                     return _json(self, {"ok": True, "approved": path})
                 except KeyError:
                     return _json(self, {"ok": False, "error": "rule not found"}, 404)
+            if url.path == "/api/save-ui":
+                length = int(self.headers.get("Content-Length", 0) or 0)
+                body = json.loads(self.rfile.read(length) or b"{}")
+                css = (body.get("css") or "").strip()
+                if not css:
+                    return _json(self, {"ok": False, "error": "no css"}, 400)
+                try:
+                    paths = _write_ui_overrides(css)
+                    return _json(self, {"ok": True, "paths": paths})
+                except Exception as exc:  # noqa: BLE001
+                    return _json(self, {"ok": False, "error": str(exc)}, 500)
             if url.path == "/api/llm/config":
                 length = int(self.headers.get("Content-Length", 0) or 0)
                 body = json.loads(self.rfile.read(length) or b"{}")

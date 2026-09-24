@@ -27,3 +27,7 @@ sandbox-staging/
 # front-end icon tooling + design specs (dev artifacts — keep local, not published)
 tools/
 design/
+
+# local-only front-end builder/design tools (WYSIWYG editor - keep local, not published)
+dashboard/assets/design-tools.js
+dashboard/assets/ui-overrides.css
