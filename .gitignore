@@ -23,3 +23,7 @@ sandbox-staging/
 # test cache + logs
 .pytest_cache/
 *.log
+
+# front-end icon tooling + design specs (dev artifacts — keep local, not published)
+tools/
+design/
