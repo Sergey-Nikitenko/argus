@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Sysmon schemaversion="4.30">
+  <!-- Argus canonical Sysmon config.
+       Enables exactly the events Argus consumes, with NO exclusions so the
+       process graph and network map are fully populated:
+         Event ID 1 (ProcessCreate)  -> process-creation + lineage graph
+         Event ID 3 (NetworkConnect) -> process -> endpoint edges
+       Add <ProcessCreate> / <NetworkConnect> onmatch="exclude" rules below to
+       trim noise on busy hosts. -->
+  <HashAlgorithms>SHA256,IMPHASH,MD5</HashAlgorithms>
+  <EventFiltering>
+    <ProcessCreate onmatch="exclude">
+    </ProcessCreate>
+    <NetworkConnect onmatch="exclude">
+    </NetworkConnect>
+  </EventFiltering>
+</Sysmon>

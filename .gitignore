@@ -13,3 +13,13 @@ __pycache__/
 *.pyc
 *.pyo
 .venv/
+
+# red-team / offensive tooling — never publish
+redteam/
+
+# sandbox staging (binaries, passwords, screenshots, machine-specific paths) — never publish
+sandbox-staging/
+
+# test cache + logs
+.pytest_cache/
+*.log

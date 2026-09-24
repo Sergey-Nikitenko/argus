@@ -36,6 +36,20 @@ class WatcherFinding:
     reason: str
 
 
+# Read-only system utilities that legitimately spawn often (event-log readers,
+# process listers, the console host) and are never the attack payload — excluded
+# from respawn-storm detection so the watcher doesn't flag its own plumbing.
+WATCHER_IGNORE = {
+    "wevtutil.exe",
+    "conhost.exe",
+    "tasklist.exe",
+}
+
+
+def _basename(image: str) -> str:
+    return image.replace("/", "\\").rsplit("\\", 1)[-1]
+
+
 def detect_watcher_pairs(
     events: list[ProcessEvent],
     window_seconds: int = 60,
@@ -51,6 +65,8 @@ def detect_watcher_pairs(
             by_image[e.image.lower()].append(ts)
 
     for image, times in by_image.items():
+        if _basename(image) in WATCHER_IGNORE:
+            continue
         times = sorted(times)
         for i in range(len(times)):
             window = times[i] + timedelta(seconds=window_seconds)

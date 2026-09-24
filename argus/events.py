@@ -159,3 +159,59 @@ def read_sysmon_events(count: int = 200) -> list[ProcessEvent]:
         if ev is not None:
             events.append(ev)
     return events
+
+
+@dataclass
+class NetworkEvent:
+    """Sysmon Event ID 3 — a network connection (process -> endpoint)."""
+    source: str
+    event_id: int
+    timestamp: str
+    pid: int
+    image: str
+    user: str = ""
+    protocol: str = ""
+    destination_ip: str = ""
+    destination_port: int = 0
+    destination_hostname: str = ""
+    source_ip: str = ""
+    initiated: bool = True
+
+    def endpoint(self) -> str:
+        """Stable endpoint key for the graph — 'ip:port', or just 'ip'."""
+        if self.destination_ip and self.destination_port:
+            return f"{self.destination_ip}:{self.destination_port}"
+        return self.destination_ip
+
+
+def parse_sysmon_network_event(xml_text: str) -> NetworkEvent | None:
+    """Parse a Sysmon Event ID 3 (network connection) event."""
+    eid, ts = _system_fields(xml_text)
+    if eid != 3:
+        return None
+    d = _data_dict(xml_text)
+    return NetworkEvent(
+        source="sysmon",
+        event_id=eid,
+        timestamp=ts,
+        pid=_to_int(d.get("ProcessId", "")),
+        image=d.get("Image", ""),
+        user=d.get("User", ""),
+        protocol=d.get("Protocol", ""),
+        destination_ip=d.get("DestinationIp", ""),
+        destination_port=_to_int(d.get("DestinationPort", "")),
+        destination_hostname=d.get("DestinationHostname", ""),
+        source_ip=d.get("SourceIp", ""),
+        initiated=(d.get("Initiated", "").strip().lower() != "false"),
+    )
+
+
+def read_sysmon_network_events(count: int = 200) -> list[NetworkEvent]:
+    """Read recent network-connection (Event ID 3) events from Sysmon."""
+    query = "*[System[(EventID=3)]]"
+    events = []
+    for block in _split_events(_wevtutil("Microsoft-Windows-Sysmon/Operational", query, count)):
+        ev = parse_sysmon_network_event(block)
+        if ev is not None:
+            events.append(ev)
+    return events

@@ -1,6 +1,7 @@
 import unittest
 
-from argus.events import parse_event, parse_security_event, parse_sysmon_event
+from argus.events import (parse_event, parse_security_event, parse_sysmon_event,
+                          parse_sysmon_network_event)
 
 SECURITY_XML = r"""<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
   <System>
@@ -78,6 +79,43 @@ class TestDispatch(unittest.TestCase):
     def test_parse_event_dispatch(self):
         self.assertEqual(parse_event(SECURITY_XML).source, "security")
         self.assertEqual(parse_event(SYSMON_XML).source, "sysmon")
+
+
+SYSMON_NETWORK_XML = r"""<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Sysmon" Guid="{33333333-3333-3333-3333-333333333333}" />
+    <EventID>3</EventID>
+    <TimeCreated SystemTime="2026-09-18T22:32:00.0000000Z" />
+  </System>
+  <EventData>
+    <Data Name="UtcTime">2026-09-18 22:32:00.000</Data>
+    <Data Name="ProcessId">6698</Data>
+    <Data Name="Image">C:\Users\Nikit\AppData\Roaming\payload.exe</Data>
+    <Data Name="User">NIKIT-PC\Nikit</Data>
+    <Data Name="Protocol">tcp</Data>
+    <Data Name="Initiated">true</Data>
+    <Data Name="SourceIp">10.0.0.5</Data>
+    <Data Name="DestinationIp">203.0.113.7</Data>
+    <Data Name="DestinationPort">443</Data>
+    <Data Name="DestinationHostname">evil.example.com</Data>
+  </EventData>
+</Event>"""
+
+
+class TestNetworkParsing(unittest.TestCase):
+    def test_fields(self):
+        ev = parse_sysmon_network_event(SYSMON_NETWORK_XML)
+        self.assertIsNotNone(ev)
+        self.assertEqual(ev.event_id, 3)
+        self.assertEqual(ev.pid, 6698)
+        self.assertEqual(ev.image, r"C:\Users\Nikit\AppData\Roaming\payload.exe")
+        self.assertEqual(ev.destination_ip, "203.0.113.7")
+        self.assertEqual(ev.destination_port, 443)
+        self.assertEqual(ev.endpoint(), "203.0.113.7:443")
+        self.assertTrue(ev.initiated)
+
+    def test_wrong_event_id_returns_none(self):
+        self.assertIsNone(parse_sysmon_network_event(SYSMON_NETWORK_XML.replace("<EventID>3</EventID>", "<EventID>1</EventID>")))
 
 
 if __name__ == "__main__":
